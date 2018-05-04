@@ -1,0 +1,491 @@
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import org.osbot.rs07.api.map.Area;
+import org.osbot.rs07.api.model.NPC;
+import org.osbot.rs07.api.model.RS2Object;
+import org.osbot.rs07.api.ui.Skill;
+import org.osbot.rs07.script.Script;
+import org.osbot.rs07.script.ScriptManifest;
+import org.osbot.rs07.utility.ConditionalSleep;
+ 
+@ScriptManifest(author = "Castro_", info = "", logo = "https://i.imgur.com/hJ93X3w.png", name = ">C<Progressive Lobsters", version = 0.3)
+public class Main extends Script {
+ 
+    public boolean gui_COMPLETE = false;
+ 
+    public String status = "";
+ 
+    Area LUMBRIDGE_SHRIMP_AREA = new Area(3232, 3142, 3247, 3156);
+ 
+    Area LUMBRIDGE_POWERFISH_AREA = new Area(3238, 3238, 3244, 3255);
+ 
+    Area PORT_SARIM_DEPOSIT_AREA = new Area(3041, 3232, 3047, 3237);
+    Area PORT_SARIM_CHARTER_AREA = new Area(3023, 3213, 3029, 3223);
+    Area KARAMJA_BOAT_INSIDE_AREA = new Area(2955, 3142, 2957, 3144).setPlane(1);
+    Area PORT_SARIM_BOAT_INSIDE_AREA = new Area(3031, 3215, 3033, 3219).setPlane(1);
+    Area KARAMJA_CHARTER_AREA = new Area(2949, 3146, 2957, 3150);
+    Area LOBSTER_AREA = new Area(2918, 3173, 2929, 3180);
+ 
+    // paint:
+    private long startTime;
+ 
+    BufferedImage paintBackground;
+ 
+    public final String formatTime(final long ms) {
+        long s = ms / 1000, m = s / 60, h = m / 60, d = h / 24;
+        s %= 60;
+        m %= 60;
+        h %= 24;
+ 
+        return d > 0 ? String.format("%02d:%02d:%02d:%02d", d, h, m, s)
+                : h > 0 ? String.format("%02d:%02d:%02d", h, m, s) : String.format("%02d:%02d", m, s);
+    }
+ 
+    public final String formatValue(final long l) {
+        return (l > 1_000_000) ? String.format("%.2fm", ((double) l / 1_000_000))
+                : (l > 1000) ? String.format("%.1fk", ((double) l / 1000)) : l + "";
+    }
+ 
+    public void onStart() {
+ 
+        startTime = System.currentTimeMillis();
+        getExperienceTracker().start(Skill.FISHING);
+ 
+    }
+ 
+    @Override
+    public int onLoop() throws InterruptedException {
+ 
+                if (skills.getStatic(Skill.FISHING) < 20) {
+ 
+                    if (LUMBRIDGE_SHRIMP_AREA.contains(myPlayer().getPosition())) {
+ 
+                        FISH_SHRIMPS();
+ 
+                        if (getInventory().isFull()) {
+ 
+                            DROP_FISH();
+ 
+                        }
+ 
+                    } else {
+ 
+                        if (!LUMBRIDGE_SHRIMP_AREA.contains(myPlayer().getPosition())) {
+ 
+                            WALKING_TO_SHRIMPS();
+                        }
+                    }
+ 
+                } else {
+ 
+                    if (skills.getStatic(Skill.FISHING) >= 20 && skills.getStatic(Skill.FISHING) < 40) {
+ 
+                        if (skills.getStatic(Skill.FISHING) >= 20 && getInventory().contains("Small fishing net")) {
+ 
+                            DROP_OLD_GEAR();
+ 
+                        } else {
+ 
+                            if (LUMBRIDGE_POWERFISH_AREA.contains(myPlayer().getPosition())) {
+ 
+                                FISH_TROUT();
+ 
+                                if (getInventory().isFull()) {
+ 
+                                    DROP_FISH();
+ 
+                                }
+ 
+                            } else {
+ 
+                                if (!LUMBRIDGE_POWERFISH_AREA.contains(myPlayer().getPosition())) {
+ 
+                                    WALKING_TO_POWERFISH();
+ 
+                                }
+ 
+                            }
+ 
+                        }
+ 
+                    } else {
+ 
+                        if (skills.getStatic(Skill.FISHING) >= 40) {
+ 
+                            if (skills.getStatic(Skill.FISHING) >= 40 && getInventory().contains("Fly fishing rod")
+                                    || getInventory().contains("Feather")) {
+ 
+                                DROP_OLD_GEAR();
+ 
+                            } else {
+ 
+                                if (LOBSTER_AREA.contains(myPlayer().getPosition()) && !getInventory().isFull()) {
+ 
+                                    FISH_LOBSTER();
+                                   
+                                   
+                                    if(!getInventory().onlyContains("Raw lobster", "Lobster pot", "Coins")) {
+                                       
+                                        DROP_MISC();
+                                       
+                                    }
+ 
+                                } else {
+ 
+                                    if (getInventory().isFull() && !PORT_SARIM_DEPOSIT_AREA.contains(myPlayer().getPosition())) {
+ 
+                                        WALKING_TO_DEPOSIT_BOX();
+ 
+                                    } else {
+ 
+                                        if (PORT_SARIM_DEPOSIT_AREA.contains(myPlayer().getPosition())
+                                                && getInventory().contains("Raw lobster")) {
+ 
+                                            DEPOSIT_FISH();
+ 
+                                        } else {
+ 
+                                            if (!LOBSTER_AREA.contains(myPlayer().getPosition())
+                                                    && getInventory().getAmount("Coins") >= 30
+                                                    && !getInventory().contains("Raw lobster")) {
+ 
+                                                WALKING_TO_LOBSTER_BOAT();
+ 
+                                            } else {
+ 
+                                                if (!LOBSTER_AREA.contains(myPlayer().getPosition())
+                                                        && getInventory().getAmount("Coins") <= 29
+                                                        && !getInventory().contains("Raw lobster")) {
+ 
+                                                    status = "Logging out as we do not have enough GP for boat fares...";
+                                                    log(status);
+                                                    logoutTab.logOut();
+ 
+                                                    status = "Stopping script.";
+                                                    log(status);
+                                                    stop();
+ 
+                                                }
+ 
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+   
+        return 20;
+    }
+ 
+    public void WALKING_TO_SHRIMPS() {
+ 
+        status = "Walking to Lumbridge shrimp spot...";
+        log(status);
+ 
+        getWalking().webWalk(LUMBRIDGE_SHRIMP_AREA.getRandomPosition());
+ 
+    }
+ 
+    public void WALKING_TO_POWERFISH() {
+ 
+        status = "Walking to Lumbridge Trout and Salmon spot...";
+        log(status);
+ 
+        getWalking().webWalk(LUMBRIDGE_POWERFISH_AREA.getRandomPosition());
+ 
+    }
+ 
+    public void WALKING_TO_LOBSTER_BOAT() {
+ 
+        status = "Walking to Lobster spot...";
+        log(status);
+ 
+        getWalking().webWalk(LOBSTER_AREA);
+ 
+    }
+ 
+    public void WALKING_TO_DEPOSIT_BOX() {
+ 
+        status = "Walking to Deposit box...";
+        log(status);
+ 
+        getWalking().webWalk(PORT_SARIM_DEPOSIT_AREA);
+ 
+    }
+ 
+    public void FISH_SHRIMPS() {
+ 
+        NPC SHRIMP_SPOT = getNpcs().closest("Fishing spot");
+ 
+        if (myPlayer().getAnimation() == -1 && !myPlayer().isMoving() && !getInventory().isFull()) {
+ 
+            if (SHRIMP_SPOT != null) {
+ 
+                SHRIMP_SPOT.interact("Net");
+ 
+            }
+ 
+            try {
+                sleep(random(1250, 1750));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+ 
+            status = "Fishing: Shrimps";
+            log(status);
+ 
+            new ConditionalSleep(random(5000, 10000)) {
+                @Override
+                public boolean condition() {
+                    return myPlayer().getAnimation() == -1;
+                }
+            }.sleep();
+ 
+        } else {
+ 
+            if (myPlayer().getAnimation() != -1) {
+ 
+                try {
+                    sleep(random(500, 5000));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+ 
+            }
+        }
+ 
+    }
+ 
+    public void FISH_TROUT() {
+ 
+        NPC TROUT_SALMON_SPOT = getNpcs().closest("Rod Fishing spot");
+ 
+        if (myPlayer().getAnimation() == -1 && !myPlayer().isMoving() && !getInventory().isFull()) {
+ 
+            if (TROUT_SALMON_SPOT != null) {
+ 
+                TROUT_SALMON_SPOT.interact("Lure");
+ 
+            }
+ 
+            try {
+                sleep(random(1250, 1750));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+ 
+            status = "Fishing: Trout and Salmon";
+            log(status);
+ 
+            new ConditionalSleep(random(5000, 10000)) {
+                @Override
+                public boolean condition() {
+                    return myPlayer().getAnimation() == -1;
+                }
+            }.sleep();
+ 
+        } else {
+ 
+            if (myPlayer().getAnimation() != -1) {
+ 
+                try {
+                    sleep(random(500, 5000));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+ 
+            }
+        }
+ 
+    }
+ 
+    public void FISH_LOBSTER() {
+ 
+        NPC LOBSTER_SPOT = getNpcs().closest(1522);
+ 
+        if (myPlayer().getAnimation() == -1 && !myPlayer().isMoving() && !getInventory().isFull()) {
+ 
+            LOBSTER_SPOT.interact("Cage");
+ 
+            try {
+                sleep(random(1250, 1750));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+ 
+            status = "Fishing: Lobsters";
+            log(status);
+ 
+            new ConditionalSleep(random(5000, 10000)) {
+                @Override
+                public boolean condition() {
+                    return myPlayer().getAnimation() == -1;
+                }
+            }.sleep();
+ 
+        } else {
+ 
+            if (myPlayer().getAnimation() != -1) {
+ 
+                try {
+                    sleep(random(500, 5000));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+ 
+            }
+        }
+ 
+    }
+ 
+    public void DROP_FISH() {
+ 
+        try {
+            sleep(random(250, 3000));
+        } catch (InterruptedException e1) {
+            e1.printStackTrace();
+        }
+ 
+        status = "Dropping Fish";
+        log(status);
+ 
+        getInventory().dropAll("Raw shrimps", "Raw anchovies", "Raw trout", "Raw salmon");
+ 
+        try {
+            sleep(random(500, 1500));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+ 
+    }
+   
+public void DROP_MISC() {
+       
+ 
+        try {
+            sleep(random(250, 3000));
+        } catch (InterruptedException e1) {
+            e1.printStackTrace();
+        }
+ 
+        status = "Dropping un-wanted items";
+        log(status);
+ 
+        getInventory().dropAllExcept("Raw lobster", "Coins", "Lobster pot");
+ 
+        try {
+            sleep(random(500, 1500));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+ 
+       
+    }
+ 
+    public void DEPOSIT_FISH() {
+ 
+        RS2Object bank_box = getObjects().closest("Bank deposit box");
+ 
+        if (bank_box != null) {
+ 
+            bank_box.interact("Deposit");
+ 
+            new ConditionalSleep(random(5000, 7000)) {
+                @Override
+                public boolean condition() {
+                    return depositBox.isOpen();
+                }
+ 
+            }.sleep();
+ 
+            if (depositBox.isOpen()) {
+ 
+                depositBox.depositAll("Raw lobster");
+ 
+                new ConditionalSleep(random(5000, 7000)) {
+                    @Override
+                    public boolean condition() {
+                        return !getInventory().contains("Raw lobster");
+                    }
+ 
+                }.sleep();
+ 
+            }
+ 
+        }
+ 
+    }
+ 
+    public void DROP_OLD_GEAR() {
+ 
+        if (skills.getStatic(Skill.FISHING) >= 20 && getInventory().contains("Small fishing net")) {
+ 
+            status = "Dropping un-needed Small fishing net now we are 20 fishing...";
+            log(status);
+ 
+            getInventory().drop("Small fishing net");
+ 
+            if (getInventory().contains("Raw shrimps") || getInventory().contains("Raw anchovies")) {
+ 
+                status = "Dropping any Raw shrimps and Raw anchovies we have in inventory...";
+                log(status);
+ 
+                getInventory().dropAll("Raw shrimps", "Raw anchovies");
+ 
+                try {
+                    sleep(random(500, 2000));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+ 
+        } else {
+ 
+            if (skills.getStatic(Skill.FISHING) >= 40 && getInventory().contains("Fly fishing rod")
+                    || getInventory().contains("Feather")) {
+ 
+                status = "Dropping un-needed Fly fishing rod and Feathers now we are 40 fishing...";
+                log(status);
+ 
+                getInventory().drop("Fly fishing rod");
+                getInventory().drop("Feather");
+ 
+                if (getInventory().contains("Raw trout") || getInventory().contains("Raw salmon")) {
+ 
+                    status = "Dropping any Raw trout and Raw salmon we have in inventory...";
+                    log(status);
+ 
+                    getInventory().dropAll("Raw trout", "Raw salmon");
+ 
+                    try {
+                        sleep(random(500, 2000));
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+ 
+    }
+ 
+    @Override
+    public void onPaint(final Graphics2D g) {
+ 
+        final long runTime = System.currentTimeMillis() - startTime;
+ 
+        g.setColor(Color.WHITE);
+        Font font = new Font("Verdana", Font.BOLD, 16);
+        g.setFont(font);
+        g.drawString(">C<Progressive Lobsters", 29, 292);
+        Font font2 = new Font("Verdana", Font.BOLD, 10);
+        g.setFont(font2);
+        g.drawString("Runtime: " + formatTime(runTime), 29, 312);
+        g.drawString("Fishing XP gained: "+ formatValue(getExperienceTracker().getGainedXP(Skill.FISHING)), 29, 332);
+ 
+    }
+ 
+}
